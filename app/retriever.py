@@ -1,4 +1,4 @@
-from langchain_ollama import OllamaEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from ingest import load_pdf, split_into_chunks
@@ -9,8 +9,8 @@ CHROMA_PATH = "chroma_db"
 PDF_PATH = "data/AI_and_RAG_Concepts.pdf"
 
 def get_embedding_function():
-    """Set up nomic-embed-text running locally via Ollama."""
-    return OllamaEmbeddings(model="nomic-embed-text")
+    """Local embeddings via sentence-transformers — no server, no API."""
+    return HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
 def build_vector_store():
     """Load PDF, chunk it, embed all chunks, store in ChromaDB."""
