@@ -1,45 +1,24 @@
 # Personal AI Research Assistant
 
-A local AI research assistant that lets you chat with your own documents. It uses
-retrieval-augmented generation (RAG) to answer questions grounded in PDFs you provide,
-and an agent layer that decides when to search your documents, when to do a calculation,
-and when to just answer directly.
+A local AI research assistant that lets you chat with your own PDFs. Uses RAG to answer
+questions grounded in your documents, with an agent layer that decides when to search
+the documents, when to calculate, and when to answer directly.
 
-Built with LangChain, ChromaDB, HuggingFace embeddings, Groq, and Streamlit.
-
-## What it does
-
-- **Chat with your documents** — drop a PDF into `data/`, and the assistant retrieves
-  relevant passages and answers based on them, rather than guessing.
-- **Agent tool-routing** — the model chooses the right tool for each question:
-  - `search_documents` — searches your document store for relevant context
-  - `calculate` — evaluates arithmetic expressions
-  - For general-knowledge questions it answers directly, without using a tool.
-- **Web chat interface** — a Streamlit UI to ask questions and see answers.
-
-## How it works
-
-1. **Ingest** — a PDF is loaded, split into overlapping chunks, and embedded using a
-   local sentence-transformers model (`all-MiniLM-L6-v2`).
-2. **Store** — the embeddings are saved to a local ChromaDB vector store.
-3. **Retrieve** — a question is embedded and matched against the store to find the most
-   relevant chunks.
-4. **Route** — the agent (running on Groq) reads the question and decides which tool,
-   if any, to use.
-5. **Answer** — the retrieved context (or tool result) is passed back to the model,
-   which writes the final grounded answer.
+Built with Streamlit, ChromaDB, HuggingFace embeddings, and Groq.
 
 ## Structure
 
-- `app/`
-  - `main.py` — Streamlit chat interface
-  - `ingest.py` — PDF loading and chunking
-  - `retriever.py` — embeddings and vector search (ChromaDB)
-  - `llm.py` — the basic RAG chain (retrieve → prompt → answer)
-  - `agent.py` — the tool-routing agent
-- `data/` — put your PDFs here
-- `chroma_db/` — the local vector store (generated; not tracked in git)
-- `mcp_server/` — planned: exposing the tools over MCP (not yet implemented)
+- `app/` — Core application modules
+  - `main.py` — Streamlit app entry point
+  - `ingest.py` — Document loading and chunking
+  - `retriever.py` — Embedding (HuggingFace) and vector search
+  - `llm.py` — Basic RAG chain (retrieve → prompt → answer)
+  - `agent.py` — Tool-routing agent (search_documents + calculate)
+- `mcp_server/` — A working MCP server exposing the same tools over the Model Context
+  Protocol (see "MCP exploration" below)
+- `test_client.py` — A small client that connects to and verifies the MCP server
+- `data/` — Put your PDFs here
+- `chroma_db/` — Auto-created vector store (not tracked in git)
 
 ## Setup
 
@@ -48,15 +27,24 @@ Built with LangChain, ChromaDB, HuggingFace embeddings, Groq, and Streamlit.
 3. Build the vector store: `python app/retriever.py`
 4. Run: `streamlit run app/main.py`
 
+## How it works
+
+1. A PDF is loaded, chunked, and embedded locally (sentence-transformers) into ChromaDB.
+2. A question is embedded and matched against the store to find relevant chunks.
+3. The agent (on Groq) reads the question and decides which tool to use — search the
+   documents, run a calculation, or answer directly.
+4. The tool result is passed back to the model, which writes the final grounded answer.
+
+## MCP exploration
+
+The `mcp_server/` folder contains a working MCP (Model Context Protocol) server that
+exposes the same two tools over the protocol, verified with `test_client.py`. The main
+app uses the tools directly via LangChain rather than over MCP — this was a deliberate
+choice for simplicity and reliability, after building and testing the MCP version. The
+server is kept as a demonstration of the protocol.
+
 ## Notes
 
-- Embeddings run locally (no API needed for that step). Generation runs on Groq's
-  hosted API, so an internet connection and API key are required.
-- The vector store is tied to the embedding model. If you change the embedding model,
-  delete `chroma_db/` and re-run the ingest step so the vectors match.
-
-## Roadmap
-
-- Conversation memory for follow-up questions
-- Expose tools over MCP
-- Support document types beyond PDF
+- Embeddings run locally; generation runs on Groq's hosted API (needs a key + internet).
+- The vector store is tied to the embedding model. If you change it, delete `chroma_db/`
+  and re-run the ingest step.
